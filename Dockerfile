@@ -30,10 +30,8 @@ EOF
 # Create data directory and torrc configuration
 RUN mkdir -p /app/tor-data && \
     cat > /etc/tor/torrc << 'EOF'
-SocksPort 0.0.0.0:9050
+SocksPort 127.0.0.1:9050
 DataDirectory /app/tor-data
-ControlPort 9051
-CookieAuthentication 0
 EOF
 
 # Create Node.js server
@@ -83,29 +81,19 @@ const agent = new SocksProxyAgent('socks5h://127.0.0.1:9050');
 const proxyMiddleware = createProxyMiddleware({
   target: ONION_URL,
   changeOrigin: true,
-  ws: true,
   agent: agent,
-  selfHandleResponse: false,
-  logLevel: 'warn',
   onProxyReq: (proxyReq, req, res) => {
-    // Remove problematic headers
-    proxyReq.removeHeader('referer');
-    proxyReq.removeHeader('origin');
-    // Set proper host
-    const url = new URL(ONION_URL);
-    proxyReq.setHeader('Host', url.hostname);
+    // Forward original headers
+    proxyReq.setHeader('X-Forwarded-For', req.ip);
+    proxyReq.setHeader('X-Real-IP', req.ip);
   },
   onProxyRes: (proxyRes, req, res) => {
     // Add security headers
     proxyRes.headers['X-Powered-By'] = 'Tor2Web';
-    // Remove headers that might cause issues
-    delete proxyRes.headers['content-security-policy'];
-    delete proxyRes.headers['x-frame-options'];
   },
   onError: (err, req, res) => {
     console.error('Proxy error:', err.message);
-    res.writeHead(502, { 'Content-Type': 'text/html' });
-    res.end(`
+    res.status(502).send(`
       <html>
         <head><title>502 Bad Gateway</title></head>
         <body>
