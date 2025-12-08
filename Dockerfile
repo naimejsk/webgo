@@ -43,7 +43,10 @@ const packageJson = require('./package.json');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ONION_URL = process.env.ONION_URL || packageJson.config.onionUrl;
+const ONION_URL = (process.env.ONION_URL || packageJson.config.onionUrl).replace(/\/$/, '');
+
+// Ensure onion URL has http:// protocol
+const targetUrl = ONION_URL.startsWith('http') ? ONION_URL : `http://${ONION_URL}`;
 
 // Wait for Tor to be ready
 function waitForTor(maxAttempts = 45) {
@@ -94,7 +97,7 @@ const agent = new SocksProxyAgent('socks5h://127.0.0.1:9050');
 
 // Proxy middleware configuration
 const proxyMiddleware = createProxyMiddleware({
-  target: ONION_URL,
+  target: targetUrl,
   changeOrigin: true,
   agent: agent,
   onProxyReq: (proxyReq, req, res) => {
@@ -113,7 +116,7 @@ const proxyMiddleware = createProxyMiddleware({
         <head><title>502 Bad Gateway</title></head>
         <body>
           <h1>502 Bad Gateway</h1>
-          <p>Cannot reach onion service: ${ONION_URL}</p>
+          <p>Cannot reach onion service: ${targetUrl}</p>
           <p>Error: ${err.message}</p>
         </body>
       </html>
@@ -125,7 +128,7 @@ const proxyMiddleware = createProxyMiddleware({
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    onionUrl: ONION_URL,
+    onionUrl: targetUrl,
     timestamp: new Date().toISOString()
   });
 });
@@ -154,7 +157,7 @@ async function start() {
     
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`✓ Tor2Web proxy running on port ${PORT}`);
-      console.log(`✓ Proxying to: ${ONION_URL}`);
+      console.log(`✓ Proxying to: ${targetUrl}`);
       console.log(`✓ Health check: http://localhost:${PORT}/health`);
     });
   } catch (err) {
