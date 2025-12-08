@@ -100,11 +100,6 @@ const proxyMiddleware = createProxyMiddleware({
   target: targetUrl,
   changeOrigin: true,
   agent: agent,
-  onProxyReq: (proxyReq, req, res) => {
-    // Forward original headers
-    proxyReq.setHeader('X-Forwarded-For', req.ip);
-    proxyReq.setHeader('X-Real-IP', req.ip);
-  },
   onProxyRes: (proxyRes, req, res) => {
     // Add security headers
     proxyRes.headers['X-Powered-By'] = 'Tor2Web';
