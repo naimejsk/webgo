@@ -46,28 +46,43 @@ const PORT = process.env.PORT || 3000;
 const ONION_URL = process.env.ONION_URL || packageJson.config.onionUrl;
 
 // Wait for Tor to be ready
-function waitForTor(maxAttempts = 60) {
+function waitForTor(maxAttempts = 45) {
   return new Promise((resolve, reject) => {
     let attempts = 0;
     
     const checkTor = () => {
       const net = require('net');
-      const socket = net.createConnection(9050, 'localhost');
+      const socket = new net.Socket();
+      
+      const timeout = setTimeout(() => {
+        socket.destroy();
+        attempts++;
+        if (attempts >= maxAttempts) {
+          reject(new Error('Tor failed to start after 45 seconds'));
+        } else {
+          setTimeout(checkTor, 1000);
+        }
+      }, 500);
       
       socket.on('connect', () => {
+        clearTimeout(timeout);
         socket.destroy();
         console.log('✓ Tor SOCKS5 proxy is ready');
         resolve();
       });
       
       socket.on('error', () => {
+        clearTimeout(timeout);
+        socket.destroy();
         attempts++;
         if (attempts >= maxAttempts) {
-          reject(new Error('Tor failed to start after 60 seconds'));
+          reject(new Error('Tor failed to start after 45 seconds'));
         } else {
           setTimeout(checkTor, 1000);
         }
       });
+      
+      socket.connect(9050, '127.0.0.1');
     };
     
     checkTor();
