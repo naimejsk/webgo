@@ -27,10 +27,11 @@ RUN cat > package.json << 'EOF'
 }
 EOF
 
-# Create torrc configuration
-RUN cat > /etc/tor/torrc << 'EOF'
+# Create data directory and torrc configuration
+RUN mkdir -p /app/tor-data && \
+    cat > /etc/tor/torrc << 'EOF'
 SocksPort 0.0.0.0:9050
-DataDirectory /var/lib/tor
+DataDirectory /app/tor-data
 ControlPort 9051
 CookieAuthentication 0
 EOF
